@@ -1,13 +1,13 @@
+/* eslint-disable complexity */
 /*
  * extension's main script responsible for orchestrating the components
  * lifecyle, interactions and the rendering of the UI elements
  */
 
 /* global LanguageDetection, OutboundTranslation, Translation , browser,
-InPageTranslation, browser, modelRegistryVersion, reportErrorsWrap, uuidv4 */
+InPageTranslation, browser, modelRegistryVersion, reportErrorsWrap, uuidv4, AndroidUI */
 
 /* eslint-disable max-lines */
-
 
 const THIS_ORIGIN = window.origin !== "null"
   ? window.origin
@@ -357,6 +357,8 @@ class Mediator {
             case "localizedLanguages":
                 this.localizedPageLanguage = message.localizedPageLanguage;
                 this.localizedNavigatorLanguage = message.localizedNavigatorLanguage;
+                this.androidUI = new AndroidUI("localizedLanguages");
+                if (this.isMainFrame) this.androidUI.show(this.tabId, this.localizedPageLanguage, this.localizedNavigatorLanguage);
                 break;
             case "onDetached":
 
@@ -371,13 +373,15 @@ class Mediator {
                     languageDetection: this.languageDetection.extractPageContent(),
                 });
                 break;
+            case "updateProgress":
+                this.androidUI.updateProgress(message.progressMessage);
+                break;
             default:
           // ignore
         }
 
     }
 }
-
 
 let mediator = null;
 reportErrorsWrap(() => {

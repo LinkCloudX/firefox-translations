@@ -2,7 +2,7 @@
 /* eslint-disable max-lines */
 /* global LanguageDetection, browser, PingSender, BERGAMOT_VERSION_FULL,
 Telemetry, loadFastText, FastText, Sentry, settings, deserializeError,
-modelRegistryRootURL, modelRegistryRootURLTest, modelRegistry */
+modelRegistryRootURL, modelRegistryRootURLTest, modelRegistry, AndroidUI */
 
 /*
  * we need the background script in order to have full access to the
@@ -76,10 +76,9 @@ let isMochitest = false;
 const languageModelFileTypes = ["model", "lex", "vocab", "qualityModel", "srcvocab", "trgvocab"];
 const CACHE_NAME = "fxtranslations";
 const FT_SCORE_THRESHOLD = 0.75;
-
+browser.experiments.translationbar = new AndroidUI();
 const init = () => {
-  Sentry.wrap(async () => {
-    cachedEnvInfo = await browser.experiments.telemetryEnvironment.getFxTelemetryMetrics();
+  Sentry.wrap(() => {
     telemetryByTab.forEach(t => t.environment(cachedEnvInfo));
   });
   browser.storage.local.get({ telemetryCollectionConsent: true }).then(item => {
@@ -219,45 +218,47 @@ const messageListener = function(message, sender) {
           let to = message.languageDetection.navigatorLanguage.substring(0,2).concat("en");
           if (from === "enen") from = to;
           if (to === "enen") to = from;
-          const isOutboundTranslationSupported = message.languageDetection.languagePairsSupportedSet.has(from) &&
-            message.languageDetection.languagePairsSupportedSet.has(to);
 
-          await browser.experiments.translationbar.show(
-            sender.tab.id,
-            message.languageDetection.pageLanguage,
-            message.languageDetection.navigatorLanguage,
-            {
-              displayStatisticsMessage: browser.i18n.getMessage("displayStatisticsMessage"),
-              outboundTranslationsMessage: browser.i18n.getMessage("outboundTranslationsMessage"),
-              qualityEstimationMessage: browser.i18n.getMessage("errorHighlightingMessage"),
-              surveyMessage: browser.i18n.getMessage("surveyMessage"),
-              translateAsBrowseOn: browser.i18n.getMessage("translateAsBrowseOn"),
-              translateAsBrowseOff: browser.i18n.getMessage("translateAsBrowseOff"),
-              thisPageIsIn: browser.i18n.getMessage("translationBarPageIsIn"),
-              translateButton: browser.i18n.getMessage("translationBarTranslateButton"),
-              optionsButton: browser.i18n.getMessage("translationBarOptionsButton"),
-              neverThisSiteLabel: browser.i18n.getMessage("translationBarNeverThisSiteLabel"),
-              neverThisSiteAccesskey: browser.i18n.getMessage("translationBarNeverThisSiteAccesskey"),
-              neverForLanguageLabel: browser.i18n.getMessage("neverForLanguageLabel", ["%S"]),
-              neverForLanguageAccesskey: browser.i18n.getMessage("neverForLanguageAccesskey"),
-              optionsMenuLabel: browser.i18n.getMessage("optionsMenuLabel"),
-              optionsMenuAccesskey: browser.i18n.getMessage("optionsMenuAccesskey"),
-              closeNotificationTooltip: browser.i18n.getMessage("closeNotification"),
-              neverOfferTranslation: browser.i18n.getMessage("neverOfferTranslation")
-            },
-            false,
-            {
-              outboundtranslations: await browser.storage.local.get("outboundtranslations-check"),
-              qualityestimations: await browser.storage.local.get("qualityestimations-check"),
-              neverOfferTranslation
-            },
-            translateAsBrowseMap.get(sender.tab.id)
-              ? translateAsBrowseMap.get(sender.tab.id)
-              : { translatingAsBrowse: false }
-            ,
-            isOutboundTranslationSupported
-          );
 
+/*
+ *const isOutboundTranslationSupported = message.languageDetection.languagePairsSupportedSet.has(from) &&
+ *  message.languageDetection.languagePairsSupportedSet.has(to);
+ *await browser.experiments.translationbar.show(
+ *  sender.tab.id,
+ *  message.languageDetection.pageLanguage,
+ *  message.languageDetection.navigatorLanguage,
+ *  {
+ *    displayStatisticsMessage: browser.i18n.getMessage("displayStatisticsMessage"),
+ *    outboundTranslationsMessage: browser.i18n.getMessage("outboundTranslationsMessage"),
+ *    qualityEstimationMessage: browser.i18n.getMessage("errorHighlightingMessage"),
+ *    surveyMessage: browser.i18n.getMessage("surveyMessage"),
+ *    translateAsBrowseOn: browser.i18n.getMessage("translateAsBrowseOn"),
+ *    translateAsBrowseOff: browser.i18n.getMessage("translateAsBrowseOff"),
+ *    thisPageIsIn: browser.i18n.getMessage("translationBarPageIsIn"),
+ *    translateButton: browser.i18n.getMessage("translationBarTranslateButton"),
+ *    optionsButton: browser.i18n.getMessage("translationBarOptionsButton"),
+ *    neverThisSiteLabel: browser.i18n.getMessage("translationBarNeverThisSiteLabel"),
+ *    neverThisSiteAccesskey: browser.i18n.getMessage("translationBarNeverThisSiteAccesskey"),
+ *    neverForLanguageLabel: browser.i18n.getMessage("neverForLanguageLabel", ["%S"]),
+ *    neverForLanguageAccesskey: browser.i18n.getMessage("neverForLanguageAccesskey"),
+ *    optionsMenuLabel: browser.i18n.getMessage("optionsMenuLabel"),
+ *    optionsMenuAccesskey: browser.i18n.getMessage("optionsMenuAccesskey"),
+ *    closeNotificationTooltip: browser.i18n.getMessage("closeNotification"),
+ *    neverOfferTranslation: browser.i18n.getMessage("neverOfferTranslation")
+ *  },
+ *  false,
+ *  {
+ *    outboundtranslations: await browser.storage.local.get("outboundtranslations-check"),
+ *    qualityestimations: await browser.storage.local.get("qualityestimations-check"),
+ *    neverOfferTranslation
+ *  },
+ *  translateAsBrowseMap.get(sender.tab.id)
+ *    ? translateAsBrowseMap.get(sender.tab.id)
+ *    : { translatingAsBrowse: false }
+ *  ,
+ *  isOutboundTranslationSupported
+ *);
+ */
           // we then ask the api for the localized version of the language codes
           browser.tabs.sendMessage(
             sender.tab.id,
@@ -391,9 +392,12 @@ const messageListener = function(message, sender) {
           }
           break;
         case "updateProgress":
-          browser.experiments.translationbar.updateProgress(
+          browser.tabs.sendMessage(
             message.tabId,
-            message.progressMessage
+            {
+              command: "updateProgress",
+              progressMessage: message.progressMessage
+            }
           );
           break;
         case "displayStatistics":
@@ -529,39 +533,52 @@ browser.pageAction.onClicked.addListener(tab => {
            * we default it to english
            */
           if (!languageDetection.isBrowserSupported()) languageDetection.navigatorLanguage = "en";
-          browser.experiments.translationbar.show(
-              tab.id,
-              "userrequest",
-              languageDetection.navigatorLanguage,
-              {
-                displayStatisticsMessage: browser.i18n.getMessage("displayStatisticsMessage"),
-                outboundTranslationsMessage: browser.i18n.getMessage("outboundTranslationsMessage"),
-                qualityEstimationMessage: browser.i18n.getMessage("errorHighlightingMessage"),
-                surveyMessage: browser.i18n.getMessage("surveyMessage"),
-                translateAsBrowseOn: browser.i18n.getMessage("translateAsBrowseOn"),
-                translateAsBrowseOff: browser.i18n.getMessage("translateAsBrowseOff"),
-                thisPageIsIn: browser.i18n.getMessage("translationBarPageIsIn"),
-                translateButton: browser.i18n.getMessage("translationBarTranslateButton"),
-                optionsButton: browser.i18n.getMessage("translationBarOptionsButton"),
-                neverThisSiteLabel: browser.i18n.getMessage("translationBarNeverThisSiteLabel"),
-                neverThisSiteAccesskey: browser.i18n.getMessage("translationBarNeverThisSiteAccesskey"),
-                neverForLanguageLabel: browser.i18n.getMessage("neverForLanguageLabel", ["%S"]),
-                neverForLanguageAccesskey: browser.i18n.getMessage("neverForLanguageAccesskey"),
-                optionsMenuLabel: browser.i18n.getMessage("optionsMenuLabel"),
-                optionsMenuAccesskey: browser.i18n.getMessage("optionsMenuAccesskey"),
-                closeNotificationTooltip: browser.i18n.getMessage("closeNotification"),
-                neverOfferTranslation: browser.i18n.getMessage("neverOfferTranslation")
-              },
-              true,
-              {
-                outboundtranslations: await browser.storage.local.get("outboundtranslations-check"),
-                qualityestimations: await browser.storage.local.get("qualityestimations-check"),
-                neverOfferTranslation: await browser.storage.local.get("neverOfferTranslation-check")
-              },
-              translateAsBrowseMap.get(tab.id)
-              ? translateAsBrowseMap.get(tab.id)
-              : { translatingAsBrowse: false },
-              false
+
+          /*
+           *browser.experiments.translationbar.show(
+           *    tab.id,
+           *    "userrequest",
+           *    languageDetection.navigatorLanguage,
+           *    {
+           *      displayStatisticsMessage: browser.i18n.getMessage("displayStatisticsMessage"),
+           *      outboundTranslationsMessage: browser.i18n.getMessage("outboundTranslationsMessage"),
+           *      qualityEstimationMessage: browser.i18n.getMessage("errorHighlightingMessage"),
+           *      surveyMessage: browser.i18n.getMessage("surveyMessage"),
+           *      translateAsBrowseOn: browser.i18n.getMessage("translateAsBrowseOn"),
+           *      translateAsBrowseOff: browser.i18n.getMessage("translateAsBrowseOff"),
+           *      thisPageIsIn: browser.i18n.getMessage("translationBarPageIsIn"),
+           *      translateButton: browser.i18n.getMessage("translationBarTranslateButton"),
+           *      optionsButton: browser.i18n.getMessage("translationBarOptionsButton"),
+           *      neverThisSiteLabel: browser.i18n.getMessage("translationBarNeverThisSiteLabel"),
+           *      neverThisSiteAccesskey: browser.i18n.getMessage("translationBarNeverThisSiteAccesskey"),
+           *      neverForLanguageLabel: browser.i18n.getMessage("neverForLanguageLabel", ["%S"]),
+           *      neverForLanguageAccesskey: browser.i18n.getMessage("neverForLanguageAccesskey"),
+           *      optionsMenuLabel: browser.i18n.getMessage("optionsMenuLabel"),
+           *      optionsMenuAccesskey: browser.i18n.getMessage("optionsMenuAccesskey"),
+           *      closeNotificationTooltip: browser.i18n.getMessage("closeNotification"),
+           *      neverOfferTranslation: browser.i18n.getMessage("neverOfferTranslation")
+           *    },
+           *    true,
+           *    {
+           *      outboundtranslations: await browser.storage.local.get("outboundtranslations-check"),
+           *      qualityestimations: await browser.storage.local.get("qualityestimations-check"),
+           *      neverOfferTranslation: await browser.storage.local.get("neverOfferTranslation-check")
+           *    },
+           *    translateAsBrowseMap.get(tab.id)
+           *    ? translateAsBrowseMap.get(tab.id)
+           *    : { translatingAsBrowse: false },
+           *    false
+           *);
+           */
+          browser.tabs.sendMessage(
+            tab.id,
+            {
+              command: "localizedLanguages",
+              localizedPageLanguage: await browser.experiments.translationbar
+                .getLocalizedLanguageName(languageDetection.pageLanguage),
+              localizedNavigatorLanguage: await browser.experiments.translationbar
+                .getLocalizedLanguageName(languageDetection.navigatorLanguage,)
+            }
           );
     });
 });
@@ -738,10 +755,12 @@ const sendUpdateProgress = (tabId, payload) => {
     // eslint-disable-next-line no-case-declarations
     let localizedMessage = getLocalizedMessage(payload);
     if (tabId >0) {
-      // request is coming from the tab
-      browser.experiments.translationbar.updateProgress(
+      browser.tabs.sendMessage(
         tabId,
-        localizedMessage
+        {
+          command: "updateProgress",
+          progressMessage: localizedMessage
+        }
       );
     } else {
       // request is coming from the translation popup

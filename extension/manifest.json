@@ -24,12 +24,12 @@
     "<all_urls>",
     "tabs",
     "webNavigation",
-    "storage",
-    "mozillaAddons"
+    "storage"
   ],
   "background": {
     "persistent": true,
     "scripts": [
+      "view/js/AndroidUI.js",
       "model/static/errorReporting/serializeError.js",
       "model/modelRegistry.js",
       "model/static/errorReporting/sentry.js",
@@ -72,6 +72,7 @@
         "model/modelRegistry.js",
         "controller/languageDetection/LanguageDetection.js",
         "view/js/OutboundTranslation.js",
+        "view/js/AndroidUI.js",
         "view/js/InPageTranslation.js",
         "model/uuid.js",
         "mediator.js"
@@ -88,54 +89,6 @@
     "controller/translation/translationWorker.js"
   ],
   "incognito": "spanning",
-  "experiment_apis": {
-    "experiments_translationbar": {
-      "schema": "controller/experiments/TranslationBar/schema.json",
-      "parent": {
-        "scopes": [
-          "addon_parent"
-        ],
-        "paths": [
-          [
-            "experiments",
-            "translationbar"
-          ]
-        ],
-        "script": "controller/experiments/TranslationBar/api.js",
-        "events": ["startup"]
-      }
-    },
-    "experiment_telemetryEnvironment": {
-      "schema": "controller/experiments/TelemetryEnvironment/schema.json",
-      "parent": {
-        "scopes": [
-          "addon_parent"
-        ],
-        "paths": [
-          [
-            "experiments",
-            "telemetryEnvironment"
-          ]
-        ],
-        "script": "controller/experiments/TelemetryEnvironment/api.js"
-      }
-    },
-    "experiments_telemetryPreferences": {
-      "schema": "controller/experiments/TelemetryPreferences/schema.json",
-      "parent": {
-        "scopes": [
-          "addon_parent"
-        ],
-        "paths": [
-          [
-            "experiments",
-            "telemetryPreferences"
-          ]
-        ],
-        "script": "controller/experiments/TelemetryPreferences/api.js"
-      }
-    }
-  },
   "icons": {
     "48": "/view/icons/translation-color.svg",
     "96": "/view/icons/translation-color.svg"
@@ -145,24 +98,6 @@
     "browser_style": true,
     "default_icon": "view/icons/translation-bw.svg",
     "default_title": "Firefox Translations"
-  },
-  "browser_action": {
-    "browser_style": true,
-    "default_icon": {
-      "16": "view/icons/translation-color.svg",
-      "32": "view/icons/translation-color.svg"
-    },
-    "default_title": "Firefox Translations",
-    "default_popup": "view/popup/index.html",
-    "theme_icons": [{
-      "light": "view/icons/translation-color.svg",
-      "dark": "view/icons/translation-color.svg",
-      "size": 16
-    }, {
-      "light": "view/icons/translation-color.svg",
-      "dark": "view/icons/translation-color.svg",
-      "size": 32
-    }]
   },
   "content_security_policy": "script-src 'self' 'unsafe-eval'; object-src 'self';"
 }
